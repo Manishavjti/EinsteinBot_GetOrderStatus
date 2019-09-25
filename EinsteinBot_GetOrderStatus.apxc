@@ -1,0 +1,62 @@
+/* This class gives the order status dynamically in einstein bot. Do all the setup for einstein bot using community
+   create two variables for orderNumber and orderStatus in einstein bot to hold the values.*/
+
+public with sharing class EinsteinBot_GetOrderStatus {
+    
+    public class OrderOutput {
+        @InvocableVariable(required=true)
+        public String sStatus;
+    }
+    
+    public class OrderInput {
+        @InvocableVariable(required=true)
+        public String sOrderNumber;
+    }
+    
+    
+    @InvocableMethod(label='Get Order Status')
+    public static List<OrderOutput> getOrderStatus(List<OrderInput> orderInputs) {
+        system.debug('order number'+orderInputs);
+        
+        List<String> orderNumbers = new List<String>(); 
+        
+        // Get the order numbers from the input
+        for (OrderInput orderInput : orderInputs) {
+            orderNumbers.add(orderInput.sOrderNumber);
+        }
+        
+        system.debug(' set value for order number'+orderNumbers);
+        
+        List<Order> orders = [SELECT OrderNumber, Status FROM Order where OrderNumber in :orderNumbers];
+        
+        Map<String,String> mapIdStatus = new Map<String,String>();
+        
+        if (orders.size() > 0) {
+            for (Order order : orders) {
+                mapIdStatus.put(order.OrderNumber, order.Status);
+            }
+        } 
+        
+        system.debug('map of id and status'+mapIdStatus);
+        
+        // Build a list of order status values for the output
+        List<OrderOutput> orderOutputs = new List<OrderOutput>();
+        for (OrderInput orderInput : orderInputs) {
+            OrderOutput orderOutput = new OrderOutput();
+            
+            // Do we have a status for this order number?
+            if (mapIdStatus.containsKey(orderInput.sOrderNumber)) {
+                // If so, then add the status
+                orderOutput.sStatus = mapIdStatus.get(orderInput.sOrderNumber);
+            } else {
+                // If not, then add an unknown status value
+                orderOutput.sStatus = 'Order not found. Please check the order number.';
+            }
+            system.debug(' orderOutput.sStatus'+ orderOutput.sStatus);
+            
+            orderOutputs.add(orderOutput);
+        }
+        system.debug('orderOutputs'+ orderOutputs);
+        return orderOutputs;    
+    }
+}
